@@ -1075,7 +1075,7 @@ struct internal_capacity {
     data_accessor accessor_;
     /// The internal capacity we use to allocate in-place
     /// std::aligned_storage_t<Capacity::capacity, Capacity::alignment> capacity_;
-    alignas(Capacity::alignment) std::byte capacity_[apacity::capacity];
+    alignas(Capacity::alignment) std::byte capacity_[capacity::capacity];
   } type;
 };
 template <typename Capacity>
