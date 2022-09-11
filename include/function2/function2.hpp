@@ -306,20 +306,12 @@ struct is_noexcept_correct<true, T, identity<Args...>>
 namespace overloading {
 template <typename... Args>
 struct overload_impl;
-template <typename Current, typename Next, typename... Rest>
-struct overload_impl<Current, Next, Rest...> : Current,
-                                               overload_impl<Next, Rest...> {
-  /* explicit overload_impl(Current current, Next next, Rest... rest)
-      : Current(std::move(current)), overload_impl<Next, Rest...>(
-                                         std::move(next), std::move(rest)...) {
-  } */
 
-  using Current::operator();
-  using overload_impl<Next, Rest...>::operator();
-};
 template <typename Current>
 struct overload_impl<Current> : Current {
-  /* explicit overload_impl(Current current) : Current(std::move(current)) {
+
+  /* explicit constexpr overload_impl(Current current)
+      : Current(std::move(current)) {
   } */
 
   using Current::operator();
@@ -355,6 +347,21 @@ struct overload_impl<Ret (C::*)(Args...) const> {
     return (*thisptr.*fn_)(static_cast<Args>(args)...);
   }
 };
+
+template <typename Current, typename Next, typename... Rest>
+struct overload_impl<Current, Next, Rest...>
+    : overload_impl<Current>, overload_impl<Next>, overload_impl<Rest>... {
+
+  /* explicit overload_impl(Current current, Next next, Rest... rest)
+      : Current(std::move(current)), overload_impl<Next, Rest...>(
+                                         std::move(next), std::move(rest)...) {
+  } */
+
+  using overload_impl<Current>::operator();
+  using overload_impl<Next>::operator();
+  using overload_impl<Rest>::operator()...;
+};
+
 template <typename... T>
 constexpr auto overload(T&&... callables) {
   return overload_impl<std::decay_t<T>...>{std::forward<T>(callables)...};
