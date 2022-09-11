@@ -309,22 +309,52 @@ struct overload_impl;
 template <typename Current, typename Next, typename... Rest>
 struct overload_impl<Current, Next, Rest...> : Current,
                                                overload_impl<Next, Rest...> {
-  explicit overload_impl(Current current, Next next, Rest... rest)
+  /* explicit overload_impl(Current current, Next next, Rest... rest)
       : Current(std::move(current)), overload_impl<Next, Rest...>(
                                          std::move(next), std::move(rest)...) {
-  }
+  } */
 
   using Current::operator();
   using overload_impl<Next, Rest...>::operator();
 };
 template <typename Current>
 struct overload_impl<Current> : Current {
-  explicit overload_impl(Current current) : Current(std::move(current)) {
-  }
+  /* explicit overload_impl(Current current) : Current(std::move(current)) {
+  } */
 
   using Current::operator();
 };
+template <typename Ret, typename... Args>
+struct overload_impl<Ret (*)(Args...)> {
+  using func_type = Ret (*)(Args...);
+  func_type fn_;
 
+  constexpr Ret operator()(Args... args) const {
+    return fn_(static_cast<Args>(args)...);
+  }
+};
+
+template <typename Ret, class C, typename... Args>
+struct overload_impl<Ret(C, Args...)> {
+  Ret (C::*fn_)(Args...);
+
+  constexpr Ret operator()(C* thisptr, Args... args) {
+    return (*thisptr.*fn_)(static_cast<Args>(args)...);
+  }
+};
+
+template <typename Ret, class C, typename... Args>
+struct overload_impl<Ret (C::*)(Args...) const> {
+  Ret (C::*fn_)(Args...) const;
+
+  constexpr Ret operator()(C* thisptr, Args... args) {
+    return (*thisptr.*fn_)(static_cast<Args>(args)...);
+  }
+
+  constexpr Ret operator()(const C* thisptr, Args... args) const {
+    return (*thisptr.*fn_)(static_cast<Args>(args)...);
+  }
+};
 template <typename... T>
 constexpr auto overload(T&&... callables) {
   return overload_impl<std::decay_t<T>...>{std::forward<T>(callables)...};
@@ -457,7 +487,7 @@ union data_accessor {
 
 /// See opcode::op_fetch_empty
 /*static*/ FU2_DETAIL_CXX14_CONSTEXPR void write_empty(data_accessor* accessor,
-                                                   bool empty) noexcept {
+                                                       bool empty) noexcept {
   accessor->inplace_storage_ = std::size_t(empty);
 }
 
@@ -1074,7 +1104,8 @@ struct internal_capacity {
     /// Tag to access the structure in a type-safe way
     data_accessor accessor_;
     /// The internal capacity we use to allocate in-place
-    /// std::aligned_storage_t<Capacity::capacity, Capacity::alignment> capacity_;
+    /// std::aligned_storage_t<Capacity::capacity, Capacity::alignment>
+    /// capacity_;
     alignas(Capacity::alignment) std::byte capacity_[Capacity::capacity];
     ;
   } type;
